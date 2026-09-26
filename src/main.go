@@ -22,7 +22,64 @@ func main() {
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
     // POST（フォームの送信）が送られてきたときの処理
     if r.Method == http.MethodPost {
-      // フォームから "text" という名前の入力値を取得するのだ
+
+      // サイズチェック, バイト単位, 1<<20 で 1MB
+			err := r.ParseMultipartForm(32 << 20)
+			if err == nil {
+			  // 画像ファイルを取得
+			  // 中身、ファイル名などのメタな情報、エラーってのは良くしらない。
+			  file, header, err := r.FormFile("image")
+				
+				if err == nil {
+					
+          // 何が起きても必ず最後にクローズするように
+					defer file.Close()
+
+					// 512 バイトの入れ物を作る
+					buf := make([]byte, 512)
+
+          // file の中身を buf に送る。buf が 512バイトしかないので、先頭の 512 バイトだけ
+					// 入る。_ は実際に buf に送れたバイト数になる。
+					// Go は使わない変数があるとエラーになるので _ で捨てると名言するらしい。
+					_, err = file.Read(buf)
+
+					if err == nil {
+				    // MIME タイプを取得
+						contentType := http.DetectContentType(buf)
+
+            // さっき file を 512 バイト読み進めてしまっているので先頭に戻す。
+						_, err = file.Seek(0, 0)
+            
+            // 拡張子決め。該当しないなら .bin
+            if err == nil {
+              ext := ".bin"
+              switch contentType {
+              case "image/jpeg": 
+                ext = ".jpg"
+              case "image/png": 
+                ext = ".png"
+              case "image/gif": 
+                ext = ".gif"
+              case "image/webp": 
+                ext = ".webp"
+              }
+            
+              // パス決め
+              nextNum := getNextFileNumber(uploadDir)
+              filename := fmt.Sprintf("%04d%s", nextNum, ext)
+              savePath := filepath.Join(uploadDir, filename)
+
+              // 書き込み
+              dst, err := os.Create(savePath)
+						  if err == nil {
+						  	defer dst.Close()
+						  	_, _ = io.Copy(dst, file)
+						  }
+					  }
+				  }
+			  }
+
+      // フォームから "text" 名前の入力値を取得
       text := r.FormValue("text")
       if text != "" {
         // フォルダ内にあるファイルを調べて、次の連番を決めるのだ
