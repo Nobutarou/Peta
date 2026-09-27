@@ -1,7 +1,6 @@
 package main
 
 import (
-  "crypto/subtle"
   "encoding/json"
   "fmt"
   "io"
@@ -13,40 +12,31 @@ import (
   "strconv"
   "strings"
 
-  "golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
   UploadDir string `json:"uploadDir"`
-  AuthUser  string `json:"authUser"`
-  AuthPass  string `json:"authPass"`
   Port      string `json:"port"`
 }
 
 var cfg Config
 
-const uploadDir = "./uploads"
-
-// for basic 認証
-const authUser = "a"
-const authPass = "a"
-
 func main() {
   loadConfig()
   // 保存フォルダ作成
-  if err := os.MkdirAll(uploadDir, 0755); err != nil {
+  if err := os.MkdirAll(cfg.UploadDir, 0755); err != nil {
     fmt.Println("フォルダの作成に失敗したのだ:", err)
     return
   }
 
-  // http://hoge.com/uploads で uploadDir にアクセスするようにする
-  http.HandleFunc("/uploads/", basicAuth(func(w http.ResponseWriter, r *http.Request) {
+  // http://hoge.com/uploads で cfg.UploadDir にアクセスするようにする
+  http.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
     target := strings.TrimPrefix(r.URL.Path, "/uploads/")
-    http.ServeFile(w, r, filepath.Join(uploadDir, target))
-  }))
+    http.ServeFile(w, r, filepath.Join(cfg.UploadDir, target))
+  })
 
   // ルートアクセス 入力フォーム 兼 保存処理）
-  http.HandleFunc("/", basicAuth(func(w http.ResponseWriter, r *http.Request) {
+  http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
     // POST（フォームの送信）が送られてきたときの処理
     if r.Method == http.MethodPost {
       
@@ -56,11 +46,11 @@ func main() {
         // 他のフォルダにアクセスさせないためのセキュリティ対策
         // ファイル名しか取れない。ディレクトリは取れない
         safeName := filepath.Base(deleteFile)
-        targetPath := filepath.Join(uploadDir, safeName)
+        targetPath := filepath.Join(cfg.UploadDir, safeName)
         _ = os.Remove(targetPath)
         
         // ファイル番号振り直し
-        renumberFiles(uploadDir)
+        renumberFiles(cfg.UploadDir)
 
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
@@ -108,9 +98,9 @@ func main() {
               }
             
               // パス決め
-              nextNum := getNextFileNumber(uploadDir)
+              nextNum := getNextFileNumber(cfg.UploadDir)
               filename := fmt.Sprintf("%04d%s", nextNum, ext)
-              savePath := filepath.Join(uploadDir, filename)
+              savePath := filepath.Join(cfg.UploadDir, filename)
 
               // 書き込み
               dst, err := os.Create(savePath)
@@ -126,11 +116,11 @@ func main() {
       text := r.FormValue("text")
       if text != "" {
         // フォルダ内にあるファイルを調べて、次の連番を決めるのだ
-        nextNum := getNextFileNumber(uploadDir)
+        nextNum := getNextFileNumber(cfg.UploadDir)
         
         // 4桁のファイル名（例: 0001.txt）を作るのだ
         filename := fmt.Sprintf("%04d.txt", nextNum)
-        filepath := filepath.Join(uploadDir, filename)
+        filepath := filepath.Join(cfg.UploadDir, filename)
 
         // ファイルにテキストを書き込んで保存するのだ
         err := os.WriteFile(filepath, []byte(text), 0644)
@@ -147,7 +137,7 @@ func main() {
     // 保存してあるファイルを流し込む
 
     var contentHtml strings.Builder
-    files, err := os.ReadDir(uploadDir)
+    files, err := os.ReadDir(cfg.UploadDir)
     if err == nil {
       // ファイルのソート
       sort.Slice(files, func(i, j int) bool {
@@ -159,7 +149,7 @@ func main() {
           continue
         }
         name := f.Name()
-        filePath := filepath.Join(uploadDir, name)
+        filePath := filepath.Join(cfg.UploadDir, name)
         contentHtml.WriteString("<div style='border: 3px solid #ccc; margin: 10px 0; padding: 10px;'>")
         contentHtml.WriteString(fmt.Sprintf("<strong>%s:</strong><br>", name))
 
@@ -171,7 +161,7 @@ func main() {
             contentHtml.WriteString(fmt.Sprintf("<pre style='white-space: pre-wrap; font-family: inherit;'>%s</pre><br>", linkedText))
           }
         } else if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" {
-          contentHtml.WriteString(fmt.Sprintf("<br><img src='/uploads/%s' style='max-width: 80%; height: auto;'><br>", name))
+          contentHtml.WriteString(fmt.Sprintf("<br><img src='/uploads/%s' style='max-width: 99%%; height: auto;'><br>", name))
         }
         // 削除ボタン
         contentHtml.WriteString(fmt.Sprintf(`
@@ -191,13 +181,17 @@ func main() {
     html := fmt.Sprintf(`
       <!DOCTYPE html>
       <html>
-      <head><meta charset="utf-8"><title>テキスト連番保存</title></head>
+      <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>テキスト連番保存</title>
+      </head>
       <body>
-      <h2>メモ</h2>
+      <h2>ペタ!</h2>
       %s
       <hr>
       <h2>送信</h2>
-      <p>クリップボードの画像はその辺でペーストすれば自動的に送信</p>
+      <p>クリップボードの画像はテキストエリアでペーストすれば自動的に送信</p>
       <form id="memoForm" method="POST" action="/" enctype="multipart/form-data">
       <textarea id="memoText" name="text" rows="3" cols="40" placeholder="文字入力"></textarea>
       <br>
@@ -255,7 +249,7 @@ func main() {
     `, contentHtml.String() )
 
     fmt.Fprint(w, html)
-  }))
+  })
 
   fmt.Printf("サーバーを起動.  http://localhost%s にアクセスよろ\n",cfg.Port)
   if err := http.ListenAndServe(cfg.Port, nil); err != nil {
@@ -266,17 +260,12 @@ func main() {
 func loadConfig() {
   configFile := "config.json"
   file, err := os.ReadFile(configFile)
-
-  // "a" の bcrypt のハッシュ値を取る
-  hashed, _ := bcrypt.GenerateFromPassword([]byte("a"), bcrypt.DefaultCost)
   
   // 初回はデフォルト値を作成
   // 止めないなら、そのまま使う
   if err != nil {
     cfg = Config{
       UploadDir: "./uploads",
-      AuthUser:  "a",
-      AuthPass:  string(hashed),
       Port:      ":8080",
     }
     data, _ := json.MarshalIndent(cfg, "", "  ")
@@ -339,18 +328,6 @@ func renumberFiles(dir string) {
       _ = os.Rename(oldPath, newPath)
     }
     num++
-  }
-}
-
-func basicAuth(next http.HandlerFunc) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    user, pass, ok := r.BasicAuth()
-    if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(authUser)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(authPass)) != 1 {
-      w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-      http.Error(w, "Unauthorized", http.StatusUnauthorized)
-      return
-    }
-    next(w, r)
   }
 }
 
