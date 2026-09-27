@@ -17,6 +17,7 @@ import (
 type Config struct {
   UploadDir string `json:"uploadDir"`
   Port      string `json:"port"`
+  Title     string `json:"title"`
 }
 
 var cfg Config
@@ -184,10 +185,10 @@ func main() {
       <head>
       <meta charset="utf-8"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-      <title>ペタ!</title>
+      <title>%s</title>
       </head>
       <body>
-      <h2>ペタ!</h2>
+      <h2>%s</h2>
       %s
       <hr>
       <h2>送信</h2>
@@ -246,7 +247,7 @@ func main() {
       </body>
       </html>
 
-    `, contentHtml.String() )
+    `, cfg.Title, cfg.Title, contentHtml.String() )
 
     fmt.Fprint(w, html)
   })
@@ -267,6 +268,7 @@ func loadConfig() {
     cfg = Config{
       UploadDir: "./uploads",
       Port:      ":8080",
+      Title: "ぺた!",
     }
     data, _ := json.MarshalIndent(cfg, "", "  ")
     _ = os.WriteFile(configFile, data, 0644)
