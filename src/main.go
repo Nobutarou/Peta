@@ -187,7 +187,7 @@ func main() {
       <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
       <title>%s</title>
       </head>
-      <body>
+      <body fontfamily: sans-serif;>
       <h2>%s</h2>
       %s
       <hr>
