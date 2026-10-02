@@ -162,7 +162,7 @@ func main() {
             contentHtml.WriteString(fmt.Sprintf("<pre style='white-space: pre-wrap; font-family: inherit;'>%s</pre><br>", linkedText))
           }
         } else if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" {
-          contentHtml.WriteString(fmt.Sprintf("<br><img src='/uploads/%s' style='max-width: 99%%; height: auto;'><br>", name))
+          contentHtml.WriteString(fmt.Sprintf("<br><img src='/uploads/%s' style='max-height: 90vh; max-width: 90%%; height: auto;'><br>", name))
         }
         // 削除ボタン
         contentHtml.WriteString(fmt.Sprintf(`
@@ -216,6 +216,7 @@ func main() {
           if (item.type.indexOf('image') === 0) {
           // 画像データを発見！ファイルオブジェクトとして取り出すのだ
           const file = item.getAsFile();
+
           
           // サーバーに送るためのフォームデータを作るのだ
           const formData = new FormData();
