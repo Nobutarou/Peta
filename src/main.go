@@ -11,6 +11,7 @@ import (
   "sort"
   "strconv"
   "strings"
+  "time"
 
 )
 
@@ -162,7 +163,7 @@ func main() {
             contentHtml.WriteString(fmt.Sprintf("<pre style='white-space: pre-wrap; font-family: inherit;'>%s</pre><br>", linkedText))
           }
         } else if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" {
-          contentHtml.WriteString(fmt.Sprintf("<br><img src='/uploads/%s?v=%d' style='max-height: 90vh; max-width: 90%%; height: auto;'><br>", name))
+          contentHtml.WriteString(fmt.Sprintf("<br><img src='/uploads/%s?v=%d' style='max-height: 90vh; max-width: 90%%; height: auto;'><br>", name,time.Now().UnixNano()))
         }
         // 削除ボタン
         contentHtml.WriteString(fmt.Sprintf(`
